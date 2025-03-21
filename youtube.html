@@ -256,56 +256,42 @@
         <option value="channel">Channel</option>
         <option value="video">Video</option>
       </select>
-      <input type="text" id="contentName" placeholder="Enter Name/Title">
-      <input type="text" id="contentUrl" placeholder="Enter URL">
-      <input type="text" id="contentThumbnail" placeholder="Enter Thumbnail URL">
+      <input type="text" id="contentId" placeholder="Enter Channel ID or Video ID">
       <button onclick="postContent()">Post</button>
       <button onclick="closePostModal()">Close</button>
     </div>
   </div>
 
   <script>
-    // Data Storage (Using localStorage)
-    let channels = JSON.parse(localStorage.getItem("channels")) || [
-      {
-        name: "Linus Tech Tips",
-        url: "https://www.youtube.com/c/LinusTechTips",
-        thumbnail: "https://via.placeholder.com/60"
-      },
-      {
-        name: "Kurzgesagt – In a Nutshell",
-        url: "https://www.youtube.com/user/kurzgesagt",
-        thumbnail: "https://via.placeholder.com/60"
-      },
-      {
-        name: "CrashCourse",
-        url: "https://www.youtube.com/channel/UCX6OQ3DkcsbYNE6H8uQQuVA",
-        thumbnail: "https://via.placeholder.com/60"
-      }
-    ];
+    // YouTube API Key
+    const API_KEY = "AIzaSyBkkMjMjjK5DDR9riOlwiXGfVU7SPzDbTI";
 
-    let videos = JSON.parse(localStorage.getItem("videos")) || [
-      {
-        title: "Never Gonna Give You Up",
-        url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-        thumbnail: "https://img.youtube.com/vi/dQw4w9WgXcQ/mqdefault.jpg"
-      },
-      {
-        title: "Lo-fi Hip Hop Radio",
-        url: "https://www.youtube.com/watch?v=jfKfPfyJRdk",
-        thumbnail: "https://img.youtube.com/vi/jfKfPfyJRdk/mqdefault.jpg"
-      },
-      {
-        title: "The Coding Train",
-        url: "https://www.youtube.com/watch?v=y8Yv4pnO7MA",
-        thumbnail: "https://img.youtube.com/vi/y8Yv4pnO7MA/mqdefault.jpg"
-      }
-    ];
+    // Data Storage (Using localStorage)
+    let channels = JSON.parse(localStorage.getItem("channels")) || [];
+    let videos = JSON.parse(localStorage.getItem("videos")) || [];
 
     // Save data to localStorage
     function saveData() {
       localStorage.setItem("channels", JSON.stringify(channels));
       localStorage.setItem("videos", JSON.stringify(videos));
+    }
+
+    // Fetch Channel Details from YouTube API
+    async function fetchChannelDetails(channelId) {
+      const response = await fetch(
+        `https://www.googleapis.com/youtube/v3/channels?part=snippet&id=${channelId}&key=${API_KEY}`
+      );
+      const data = await response.json();
+      return data.items[0].snippet;
+    }
+
+    // Fetch Video Details from YouTube API
+    async function fetchVideoDetails(videoId) {
+      const response = await fetch(
+        `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${API_KEY}`
+      );
+      const data = await response.json();
+      return data.items[0].snippet;
     }
 
     // Display Channels
@@ -320,7 +306,7 @@
         item.innerHTML = `
           <img src="${channel.thumbnail}" alt="${channel.name}">
           <h2>${channel.name}</h2>
-          <button onclick="window.open('${channel.url}', '_blank')">View Channel</button>
+          <button onclick="window.open('https://www.youtube.com/channel/${channel.id}', '_blank')">View Channel</button>
           <button class="admin-delete" onclick="deleteChannel(${index})">Delete</button>
         `;
         channelList.appendChild(item);
@@ -340,7 +326,7 @@
         item.innerHTML = `
           <img src="${video.thumbnail}" alt="${video.title}">
           <h2>${video.title}</h2>
-          <button onclick="window.open('${video.url}', '_blank')">Watch Video</button>
+          <button onclick="window.open('https://www.youtube.com/watch?v=${video.id}', '_blank')">Watch Video</button>
           <button class="admin-delete" onclick="deleteVideo(${index})">Delete</button>
         `;
         videoList.appendChild(item);
@@ -351,7 +337,7 @@
     // Admin-Only Delete Functions
     function deleteChannel(index) {
       const password = prompt("Enter admin password to delete:");
-      if (password === "Amroamo7370") { // Replace with a secure password in production
+      if (password === "admin123") { // Replace with a secure password in production
         channels.splice(index, 1);
         saveData();
         renderChannels();
@@ -407,16 +393,24 @@
       document.getElementById("postModal").style.display = "none";
     }
 
-    function postContent() {
+    async function postContent() {
       const type = document.getElementById("contentType").value;
-      const name = document.getElementById("contentName").value;
-      const url = document.getElementById("contentUrl").value;
-      const thumbnail = document.getElementById("contentThumbnail").value;
+      const id = document.getElementById("contentId").value;
 
       if (type === "channel") {
-        channels.push({ name, url, thumbnail });
+        const details = await fetchChannelDetails(id);
+        channels.push({
+          id,
+          name: details.title,
+          thumbnail: details.thumbnails.default.url
+        });
       } else if (type === "video") {
-        videos.push({ title: name, url, thumbnail });
+        const details = await fetchVideoDetails(id);
+        videos.push({
+          id,
+          title: details.title,
+          thumbnail: details.thumbnails.medium.url
+        });
       }
 
       saveData();
